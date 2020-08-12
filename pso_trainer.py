@@ -4,27 +4,33 @@ import torchvision
 import torch.nn as nn
 import torchvision.transforms as transforms
 from model import LeNet
+from PSO import Swarm, PSO
 import torch.optim as optim
 from torch.utils.data import DataLoader
 from torchvision.datasets import MNIST, CIFAR10
 from pytorch_lightning import LightningModule, Trainer
 from pytorch_lightning.loggers import TensorBoardLogger
 
-class MaskGradSystem(LightningModule):
+class psoSystem(LightningModule):
     def __init__(self, hparams):
-        super(MaskGradSystem,self).__init__()
+        super(psoSystem,self).__init__()
         self.hparams = hparams
         self.model = LeNet()
         self.criterion = nn.CrossEntropyLoss()
-        self.mask = torch.nn.Parameter(torch.randn(self.model.mask_len))
-        #self.c = torch.nn.Parameter(10*torch.randn(1))
-        self.mask = torch.nn.Parameter(torch.ones(self.model.mask_len))
-        #self.mask = torch.nn.Parameter(10*torch.ones(self.model.mask_len))
-    
+        self.swarm = Swarm(hparams.num_particles,self.criterion)    
 
     def configure_optimizers(self):
         #l = [self.mask]
-        return optim.SGD([self.mask],lr=0.01)
+        return PSO(self.swarm.particles,
+                    self.hparams.cognitive_constant,
+                    self.hparams.social_constant,
+                    self.hparams.inertia)
+    
+    def optimizer_step(self,current_epoch,batch_idx,optimizer,optimizer_idx,second_order_closure,on_tpu,using_native_amp,using_lbfgs):
+        optimizer(self.swarm.fitness_list)
+        
+
+
     
 
     def prepare_data(self):
@@ -73,10 +79,7 @@ class MaskGradSystem(LightningModule):
     
     
     def training_step(self,batch,batch_idx):
-        x, y = batch
-        y_hat = self(x)
-        loss = self.criterion(y_hat,y)
-        return {'loss':loss}
+        self.swarm.evaulate(batch)
     
     
     def validation_epoch_end(self,outputs):

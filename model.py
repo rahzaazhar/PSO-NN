@@ -12,23 +12,23 @@ class LeNet(nn.Module):
         self.conv2 = nn.Conv2d(20, 50, 5, 1)
         self.fc1 = nn.Linear(5*5*50, 500)
         self.fc2 = nn.Linear(500, 10)
-        self.conv_to_mask = vecToMask([0,20,50,500,10])
+        self.conv_to_mask = vecToMask([0,20,50,500])
         self.mask_unsqueeze = lambda x : x.unsqueeze(-1).unsqueeze(-1)
         self.process_mask = lambda x : 10*F.tanh(x)
-        self.mask_len = sum([20,50,500,10])
+        self.mask_len = sum([20,50,500])
 
     def forward(self, x, pos):
-        #pos = self.process_mask(pos)
-        #mask = self.conv_to_mask(pos)
+        pos = self.process_mask(pos)
+        mask = self.conv_to_mask(pos)
         x = F.relu(self.conv1(x))
-        #x = x*self.mask_unsqueeze(mask[0])
+        x = x*self.mask_unsqueeze(mask[0])
         x = F.max_pool2d(x, 2, 2)
         x = F.relu(self.conv2(x))
-        #x = x*self.mask_unsqueeze(mask[1])
+        x = x*self.mask_unsqueeze(mask[1])
         x = F.max_pool2d(x, 2, 2)
         x = x.view(-1, 5*5*50)
         x = F.relu(self.fc1(x))
-        #x = x*mask[2]
+        x = x*mask[2]
         x = self.fc2(x)
         #x = x*mask[3]
         return x
